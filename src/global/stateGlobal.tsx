@@ -1,93 +1,57 @@
 
-import { ReactNode, useState, useEffect, Dispatch, SetStateAction } from 'react'
+import { ReactNode, useState, useEffect, Dispatch, SetStateAction, ChangeEvent } from 'react'
 import { instance } from "../instanceAxios";
 
 import { createContext } from 'react'
+import { ICharacters, Icomics, ISeries} from './interfaces';
 
 type Globais = {
     comics: Object | null;
-    characters: Object | null;
-    setCharacters: Dispatch<SetStateAction<ICharacters | null>>,
+    characters: ICharacters[] | undefined;
+    series: ISeries[] | undefined,
+    yaers: string[] | undefined,
+    page: number,
+    setPage: Dispatch<SetStateAction<number>>,
+    setYears: Dispatch<SetStateAction<string[] | undefined>>,
+    setSeries: Dispatch<SetStateAction<ISeries[] | undefined>>,
+    setCharacters: Dispatch<SetStateAction<ICharacters[] | undefined>>,
     setOnSearch: Dispatch<SetStateAction<boolean>>,
+    setReset: Dispatch<SetStateAction<boolean>>,
     handlereset: () => void,
+    captureYears: () => void,
     reset: boolean,
     onSearch: boolean,
 
 }
-
-export const ContextGlobal = createContext<Globais>({} as Globais)
-
-type TProps = {
+export type TProps = {
     children: ReactNode;
 }
 
-interface Icomics {
-    id: string,
-    title: string,
-    urls: [{
-        type: string,
-        url: string
-    }]
-    creators: {
-        available: number,
-        collectionURI: string,
-        items: [{
-            name: string,
-            resourceURI: string,
-            role: string
-        }],
-    },
-    series: {
-        name: string,
-        resourseURI: string
-    },
-    stories: {
-        available: number,
-        collectionURI: string,
-        items: [{
-            name: string,
-            resourceURI: string,
-            type: string
-        }],
+export const ContextGlobal = createContext<Globais>({} as Globais)
 
 
-    }
-
-}
-export interface ICharacters {
-    id: string,
-    name: string,
-    urls: Array<{ type: string, url: string }>,
-    thumbnail: {
-        extension: string,
-        path: string
-    },
-    series: {
-        name: string,
-        resourseURI: string,
-        items: Array<{ name: string, resourceURI: string }>
-    },
-    stories: {
-        available: number,
-        collectionURI: string,
-        items: Array<{
-            name: string,
-            resourceURI: string,
-            type: string
-        }>,
-    }
-}
 export const StateGlobal = ({ children }: TProps) => {
 
     const [comics, setcomics] = useState<Icomics | null>(null)
-    const [characters, setCharacters] = useState<ICharacters | null>(null)
+    const [characters, setCharacters] = useState<ICharacters[]>()
     const [reset, setReset] = useState(false)
     const [onSearch, setOnSearch] = useState(false)
+    const [series, setSeries] = useState<ISeries[]>()
+    const [yaers, setYears] = useState<string[] | undefined>()
+    const [page, setPage] = useState<number>(1)
 
     const handlereset = () => {
         setReset(true);
         setOnSearch(false)
     }
+
+    const captureYears = () => {
+        const result: string[] = [];
+        series?.forEach((serie) => {
+            result.push(serie.startYear);
+        });
+        setYears(result);
+    };
 
     useEffect(() => {
         instance.get('comics')
@@ -96,19 +60,33 @@ export const StateGlobal = ({ children }: TProps) => {
     }, [])
 
     useEffect(() => {
-        instance.get('characters')
+        if(page>1){
+        instance.get(`characters?limit=20&offset=${page}0`)
             .then((res) => { setCharacters(res.data.data.results) })
             .catch((erro) => { console.log(erro) })
-    }, [reset])
+        }else{
+            instance.get(`characters`)
+            .then((res) => { setCharacters(res.data.data.results) })
+            .catch((erro) => { console.log(erro) })
+        }
+    }, [reset, page])
 
     return <ContextGlobal.Provider value={{
         comics,
         characters,
         reset,
         onSearch,
+        series,
+        yaers,
+        page,
+        setPage,
+        setReset,
+        setYears,
+        setSeries,
         setOnSearch,
         setCharacters,
         handlereset,
+        captureYears,
     }}>
         {children}
     </ContextGlobal.Provider>
